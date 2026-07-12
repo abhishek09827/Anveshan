@@ -1,0 +1,2 @@
+1. AI agents fail silently. Logs show success but the output is wrong. Existing tools either show you what happened (tracing) or measure quality (evaluation), but not both in one local-first tool. Lets ingests OTLP traces from any AI framework, visualizes the full decision graph, and runs automated evaluation - hallucination detection, compliance checks, cost tracking - so developers catch failures that logs miss, without sending data to the cloud.
+
