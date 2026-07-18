@@ -9,4 +9,5 @@ The problem today is that these traces exist - OpenTelemetry already captures th
 This project is the lens between raw traces and human understanding.
 
 May include:
-1.  Codex JSONL adapter 
+1.  Codex JSONL adapter
+2.  hallucination taxonomy (claimed-but-didn't-run commands, invented file paths/APIs, asserted-but-unverified test results). This doesn't need real Codex/Antigravity data to start - build and test the judge rubric against your own synthetic traces first. 
