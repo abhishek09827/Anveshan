@@ -11,3 +11,4 @@
 3. OTLP     -> defines what telemetry messages look like (Protobuf schemas) and how
                they are transported (gRPC or HTTP).
             -> compatible with frameworks like LangGraph, OpenAI Agents SDK, CrewAI, LlamaIndex, and AutoGen without writing custom integrations.
+            -> The OpenTelemetry Collector is a middleware component that receives telemetry from instrumented applications, optionally processes it (such as batching, filtering, or enriching), and exports it to one or more backends. In Sakshi, I use the Collector so I don't have to implement the OTLP protocol, retries, batching, or buffering myself. This lets Sakshi focus on its core responsibility—debugging and evaluating AI agent execution.
