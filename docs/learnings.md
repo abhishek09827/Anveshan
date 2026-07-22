@@ -23,3 +23,12 @@
             -> OpenTelemetry emits/exports spans only when they end (`span.end()`).
             -> Nested execution follows LIFO stack behavior: innermost child spans finish and export before parent spans finish.
             -> Anveshan parser/graph engines must reconstruct trace trees using `parent_id` and `start_time` rather than raw arrival order.
+
+6. OTLP & Collector Pipeline Architecture:
+            -> OTLPSpanExporter serializes spans into binary Protobuf and sends them via HTTP POST (`4318/v1/traces`) or gRPC (`4317`).
+            -> The OpenTelemetry Collector operates a 3-stage pipeline: `Receivers` (ingest) -> `Processors` (batch/filter) -> `Exporters` (debug/storage).
+            -> `BatchSpanProcessor` in Python handles retries and background async exports, keeping app response latency unaffected.
+
+7. Instrumentation Scopes (`ScopeSpans`):
+            -> OTLP payloads group spans under `ScopeSpans` based on the instrumentation library origin (e.g. `opentelemetry.instrumentation.fastapi` vs `anveshan.manual.tracer`).
+            -> All spans across different `ScopeSpans` within a request share the exact same `Trace ID` and preserve `parent_id` hierarchy across scope boundaries.
