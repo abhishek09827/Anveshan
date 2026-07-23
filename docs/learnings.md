@@ -32,3 +32,12 @@
 7. Instrumentation Scopes (`ScopeSpans`):
             -> OTLP payloads group spans under `ScopeSpans` based on the instrumentation library origin (e.g. `opentelemetry.instrumentation.fastapi` vs `anveshan.manual.tracer`).
             -> All spans across different `ScopeSpans` within a request share the exact same `Trace ID` and preserve `parent_id` hierarchy across scope boundaries.
+
+8. Hybrid Relational + JSON Schema Design:
+            -> High-frequency query fields (`trace_id`, `span_id`, `parent_span_id`, `start_time`, `kind`, `status`, `cost`, `tokens`) exist as indexed SQL columns for Cytoscape graph queries and duration arithmetic.
+            -> Evolving metadata (prompts, tool parameters, raw scope attributes) are stored in `attributes_json`, `events_json`, and `resource_json` blobs for lazy loading (`GET /spans/{span_id}`).
+            -> Materialized `traces` table prevents costly `GROUP BY` aggregations on millions of spans during dashboard listing.
+
+9. Nanosecond Timestamps & SQLite WAL Mode:
+            -> Storing timestamps as Unix nanosecond integers preserves native OpenTelemetry precision and eliminates string-parsing overhead for arithmetic (`duration_ms = (end_time - start_time) / 1e6`).
+            -> `PRAGMA journal_mode=WAL;` decouples reader and writer locks in SQLite, allowing background OTLP ingestion to write continuously while frontend Cytoscape requests read committed snapshots.

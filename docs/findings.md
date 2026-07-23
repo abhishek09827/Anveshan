@@ -9,3 +9,8 @@
    - Empirical observation: The OTel Collector outputs spans separated into `ScopeSpans` arrays (e.g. `ScopeSpans #0` for `anveshan.manual.tracer` and `ScopeSpans #1` for `opentelemetry.instrumentation.fastapi`).
    - Key Finding: Parent-child pointers cross scope boundaries seamlessly (`otlp_parent_span` in Scope #0 has `parent_id: 23c44cd5cbd5e0e4` which resolves to `GET /otlp-trace` in Scope #1).
    - Architectural Implication: Anveshan's ingestion parser must flatten or globally index all `ScopeSpans` by `span_id` within a `ResourceSpans` batch before resolving parent-child relationships.
+
+4. Direct OTLP/HTTP Ingestion & Graph-Ready API Pivot:
+   - Architectural Decision: Replaced file-watcher handoff with direct `otlphttp` exporter push from OTel Collector to FastAPI ingestion endpoint (`/api/v1/otlp/v1/traces`).
+   - Rationale: Eliminates file tailing latency, partial line read errors, and disk I/O.
+   - Graph Strategy: Server computes and returns `nodes` and `edges` (Graph-ready API) to keep UI rendering fast, with lazy-loading (`GET /spans/{span_id}`) for full prompts/attributes.
