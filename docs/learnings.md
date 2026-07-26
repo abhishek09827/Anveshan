@@ -41,3 +41,20 @@
 9. Nanosecond Timestamps & SQLite WAL Mode:
             -> Storing timestamps as Unix nanosecond integers preserves native OpenTelemetry precision and eliminates string-parsing overhead for arithmetic (`duration_ms = (end_time - start_time) / 1e6`).
             -> `PRAGMA journal_mode=WAL;` decouples reader and writer locks in SQLite, allowing background OTLP ingestion to write continuously while frontend Cytoscape requests read committed snapshots.
+
+10. Phase 2 OTLP/HTTP Ingestion Boundary:
+            -> An OTLP JSON trace request is nested as `resourceSpans -> scopeSpans -> spans`; a receiver must flatten every scope before storing spans because related parent-child spans can be emitted from different instrumentation scopes.
+            -> The receiver must treat trace and span IDs as opaque hexadecimal strings, preserve nanosecond timestamps, and retain resource, attribute, and event data in the schema's JSON fields.
+            -> Delivery correctness is measured by comparing the number of spans emitted by the live instrumented app with the number persisted in SQLite, not by request count: one OTLP request can contain many spans.
+
+11. FastAPI Lifespan for Receiver Readiness:
+            -> A lifespan function runs startup work before FastAPI accepts requests and shutdown work after it stops. It is the right boundary for initializing local resources such as the SQLite schema.
+            -> A health endpoint validates only process readiness and basic dependency initialization; it does not validate OTLP parsing or ingestion correctness. Those require focused payload and persistence tests.
+            -> Relative SQLite paths depend on the process working directory. A local development default is convenient, but a receiver intended to be launched by a Collector or service manager needs an explicit, configurable database path.
+
+11. Python Web Serving Stack (WSGI, ASGI, Uvicorn, FastAPI):
+            -> WSGI (Web Server Gateway Interface): Synchronous Python standard interface (PEP 3333). Serves one HTTP request per thread/process. Cannot handle async I/O, WebSockets, or high-concurrency streaming telemetry.
+            -> ASGI (Asynchronous Server Gateway Interface): Asynchronous standard interface supporting `async/await`, HTTP/2, WebSockets, and event loops. Essential for handling concurrent high-throughput telemetry ingestion without thread pool exhaustion.
+            -> Uvicorn: Lightning-fast ASGI web server built on `uvloop` (C-based asyncio loop) and `httptools`. Listens on HTTP ports (e.g. `8000`), receives raw network sockets, and forwards ASGI HTTP events to FastAPI.
+            -> FastAPI: ASGI web framework built on Starlette and Pydantic. Exposes Anveshan's API endpoints (`/api/v1/otlp/v1/traces`, `/api/v1/traces/{trace_id}/graph`, `/api/v1/spans/{span_id}`).
+            -> Project Scope: In Anveshan, Uvicorn (ASGI server) runs FastAPI (ASGI app). ASGI's async event loop allows FastAPI to non-blockingly receive high-frequency OTLP HTTP trace batches from the OTel Collector, write them to SQLite WAL, and simultaneously serve Cytoscape graph requests to the React UI without reader-writer contention or thread blocking.
