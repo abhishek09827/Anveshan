@@ -18,3 +18,9 @@
 5. Phase 1 Ingestion Integrity Verification:
    - Verification Outcome: 2,113 spans across 100 ReAct agent traces successfully stored in SQLite with 0 orphaned child spans (`parent_span_id` validation query returned 0 missing parents).
    - Performance: Single-transaction batch insert (`executemany` with `PRAGMA journal_mode=WAL;`) achieved 100% data integrity with zero span loss.
+
+6. Phase 2 Preflight — 2026-07-26:
+   - The persistence layer is ready for a receiver: `backend/db/database.py` initializes the schema, enables WAL and foreign keys, and provides a batch writer.
+   - The HTTP ingestion layer is not implemented yet: `backend/app.py` is empty, so no FastAPI route currently receives OTLP payloads.
+   - The Collector is correctly configured to receive OTLP on HTTP `4318` and gRPC `4317`, but its only active trace exporter is `debug`; it cannot yet forward traces to Anveshan.
+   - Decision: retain direct Collector-to-FastAPI OTLP/HTTP delivery. Do not reintroduce the obsolete JSON-file handoff shown in the previous planning diagram.
