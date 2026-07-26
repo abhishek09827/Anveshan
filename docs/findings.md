@@ -14,3 +14,7 @@
    - Architectural Decision: Replaced file-watcher handoff with direct `otlphttp` exporter push from OTel Collector to FastAPI ingestion endpoint (`/api/v1/otlp/v1/traces`).
    - Rationale: Eliminates file tailing latency, partial line read errors, and disk I/O.
    - Graph Strategy: Server computes and returns `nodes` and `edges` (Graph-ready API) to keep UI rendering fast, with lazy-loading (`GET /spans/{span_id}`) for full prompts/attributes.
+
+5. Phase 1 Ingestion Integrity Verification:
+   - Verification Outcome: 2,113 spans across 100 ReAct agent traces successfully stored in SQLite with 0 orphaned child spans (`parent_span_id` validation query returned 0 missing parents).
+   - Performance: Single-transaction batch insert (`executemany` with `PRAGMA journal_mode=WAL;`) achieved 100% data integrity with zero span loss.
