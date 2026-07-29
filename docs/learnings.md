@@ -52,6 +52,16 @@
             -> A health endpoint validates only process readiness and basic dependency initialization; it does not validate OTLP parsing or ingestion correctness. Those require focused payload and persistence tests.
             -> Relative SQLite paths depend on the process working directory. A local development default is convenient, but a receiver intended to be launched by a Collector or service manager needs an explicit, configurable database path.
 
+12. SQLite `REPLACE` Is Not a Safe Incremental Upsert:
+            -> SQLite's `INSERT OR REPLACE` deletes the conflicting row and then inserts a new one; it is not an in-place update.
+            -> When a parent row has child rows with `ON DELETE CASCADE`, replacing the parent can cascade-delete those children. Use `INSERT ... ON CONFLICT (...) DO UPDATE` when parent-child data must survive repeated deliveries.
+            -> OTLP exporters may batch or retry spans independently, so an ingestion store must be idempotent and safe when the same trace is delivered in more than one request.
+
+13. OTLP Span Identity:
+            -> A trace ID identifies one distributed operation; a span ID identifies a span within that trace. A database receiving general OTLP must model the pair `(trace_id, span_id)` as the span identity.
+            -> A globally unique `span_id` can appear to work with generated samples, but it encodes a stronger guarantee than OTLP provides and risks rejecting valid telemetry from different traces.
+            -> An executable regression test is part of an ingestion correctness gate: a one-off manual check confirms an observation, while the committed test prevents a later refactor from restoring destructive write behavior.
+
 11. Python Web Serving Stack (WSGI, ASGI, Uvicorn, FastAPI):
             -> WSGI (Web Server Gateway Interface): Synchronous Python standard interface (PEP 3333). Serves one HTTP request per thread/process. Cannot handle async I/O, WebSockets, or high-concurrency streaming telemetry.
             -> ASGI (Asynchronous Server Gateway Interface): Asynchronous standard interface supporting `async/await`, HTTP/2, WebSockets, and event loops. Essential for handling concurrent high-throughput telemetry ingestion without thread pool exhaustion.
