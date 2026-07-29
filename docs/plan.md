@@ -28,7 +28,7 @@ Local-first AI agent debugger and evaluation tool.
 ## Architecture in one line
 
 ```
-Any OTel app → Collector (Go) → JSON file → FastAPI (Python) → SQLite → React UI
+Any OTel app → Collector (Go) → FastAPI OTLP receiver (Python) → SQLite → React UI
 ```
 
 ---
@@ -70,6 +70,17 @@ span:   span_id, parent_span_id, span_kind, gen_ai_model, input/output_tokens
 | 5 | Frontend (500-span synthetic first) | Renders under 2 seconds |
 | 6 | Domain plugins | Known test cases pass |
 | 7 | Ship | Stranger installs + debugs in under 5 min |
+
+### Phase 2 execution record
+
+| Step | Status | Outcome |
+|---|---|---|
+| 2.1 — Ingestion preflight | Complete | Confirmed the schema and transactional SQLite writer are ready; `backend/app.py` has no receiver yet; the Collector currently exports only to `debug`. The direct OTLP/HTTP path remains the approved integration. |
+| 2.2 — Receiver foundation | Complete | FastAPI starts successfully, initializes the SQLite schema through its lifespan, and returns `200 {"status":"ok"}` from `GET /health`. |
+| 2.3 — Incremental-write safety | In progress | Trace writes now use non-destructive UPSERT; a disposable two-batch verification preserved both spans and merged time bounds. Add a committed regression test before closing this gate. |
+| 2.4 — OTLP identity-safe schema | Future scope | Change the span key to `(trace_id, span_id)` before supporting arbitrary external or multi-tenant telemetry. Deferred for the local MVP because the existing 64-bit ID collision risk is negligible. |
+| 2.5 — OTLP payload contract | Next | Define and test a parser that flattens `resourceSpans → scopeSpans → spans`, preserves hex IDs, timestamps, status, attributes, events, and resource metadata, then writes one transaction per received batch. |
+| 2.6 — Live Collector proof | Blocked by 2.5 | Add the `otlphttp/anveshan` Collector exporter and run an instrumented app long enough to compare emitted versus persisted span counts. |
 
 ---
 
