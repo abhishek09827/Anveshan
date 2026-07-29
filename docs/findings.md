@@ -40,3 +40,9 @@
    - The verification must become a committed regression test before this gate is closed.
    - The schema currently makes `spans.span_id` the global primary key. OTLP requires span IDs to be unique within a trace, not across all traces. Use `(trace_id, span_id)` as the identity key before receiving arbitrary external telemetry.
    - MVP scope decision: defer this schema migration while Anveshan remains a local prototype. The non-destructive trace UPSERT remains mandatory; the composite key becomes required before broader external telemetry support.
+
+10. Phase 2 OTLP Parser Verification — 2026-07-29:
+   - `backend/otlp/parser.py` is a pure transformation layer with no FastAPI or SQLite dependency.
+   - The parser test passes with a root and child span emitted from different `ScopeSpans`, confirming that flattening preserves `trace_id` and `parent_span_id` rather than relying on arrival order.
+   - Instrumentation scope is retained in `attributes_json`; resource metadata and events remain available in their corresponding JSON fields.
+   - Current scope: numeric OTLP enum values are mapped to span kinds and status values. Input validation and alternate enum representations belong at the HTTP boundary in a later step.
