@@ -24,3 +24,19 @@
    - The HTTP ingestion layer is not implemented yet: `backend/app.py` is empty, so no FastAPI route currently receives OTLP payloads.
    - The Collector is correctly configured to receive OTLP on HTTP `4318` and gRPC `4317`, but its only active trace exporter is `debug`; it cannot yet forward traces to Anveshan.
    - Decision: retain direct Collector-to-FastAPI OTLP/HTTP delivery. Do not reintroduce the obsolete JSON-file handoff shown in the previous planning diagram.
+
+7. Phase 2 Receiver Foundation Verification — 2026-07-26:
+   - `backend/app.py` now uses a FastAPI lifespan to initialize the SQLite schema before it accepts requests.
+   - `GET /health` returned `200` with `{"status":"ok"}`, and the local database contains the expected `traces` and `spans` tables.
+   - Follow-up decision: the current database path is relative to the process working directory. Make it an explicit application setting before running the Collector in a different execution environment, so traces cannot be written to an unintended SQLite file.
+
+8. Phase 2 Incremental OTLP Write Risk — 2026-07-26:
+   - `insert_trace_and_spans` currently uses `INSERT OR REPLACE` for the parent `traces` row.
+   - In SQLite, `REPLACE` is implemented as a delete followed by an insert. With the `spans.trace_id` foreign key configured as `ON DELETE CASCADE`, replacing a trace can delete its already-persisted spans.
+   - Decision: use a non-destructive UPSERT for trace summaries and insert/update spans independently. This is required before live OTLP ingestion because one logical trace may be exported across multiple batches.
+
+9. Phase 2 Incremental-write Verification & Identity Review — 2026-07-26:
+   - A disposable two-delivery test inserted `span-1` and then `span-2` for the same trace. Both span rows remained after the trace UPSERT, and trace bounds merged from 1s–2s and 3s–4s into 1s–4s (3,000 ms).
+   - The verification must become a committed regression test before this gate is closed.
+   - The schema currently makes `spans.span_id` the global primary key. OTLP requires span IDs to be unique within a trace, not across all traces. Use `(trace_id, span_id)` as the identity key before receiving arbitrary external telemetry.
+   - MVP scope decision: defer this schema migration while Anveshan remains a local prototype. The non-destructive trace UPSERT remains mandatory; the composite key becomes required before broader external telemetry support.
