@@ -62,6 +62,11 @@
             -> A globally unique `span_id` can appear to work with generated samples, but it encodes a stronger guarantee than OTLP provides and risks rejecting valid telemetry from different traces.
             -> An executable regression test is part of an ingestion correctness gate: a one-off manual check confirms an observation, while the committed test prevents a later refactor from restoring destructive write behavior.
 
+14. Pure OTLP Parsing and Cross-Scope Relationships:
+            -> Keep the OTLP parser independent of FastAPI and SQLite. Given a Python payload dictionary, it returns normalized span records; this makes protocol parsing directly unit-testable.
+            -> The parser flattens `resourceSpans`, `scopeSpans`, and `spans`, while retaining each span's IDs. Parent-child relationships can cross instrumentation scopes, so a scope must never be treated as a trace boundary.
+            -> OTLP JSON represents nanosecond timestamps as strings to avoid JavaScript-number precision loss. Convert them to Python integers before calculating `duration_ms`.
+
 11. Python Web Serving Stack (WSGI, ASGI, Uvicorn, FastAPI):
             -> WSGI (Web Server Gateway Interface): Synchronous Python standard interface (PEP 3333). Serves one HTTP request per thread/process. Cannot handle async I/O, WebSockets, or high-concurrency streaming telemetry.
             -> ASGI (Asynchronous Server Gateway Interface): Asynchronous standard interface supporting `async/await`, HTTP/2, WebSockets, and event loops. Essential for handling concurrent high-throughput telemetry ingestion without thread pool exhaustion.
