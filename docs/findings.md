@@ -46,3 +46,9 @@
    - The parser test passes with a root and child span emitted from different `ScopeSpans`, confirming that flattening preserves `trace_id` and `parent_span_id` rather than relying on arrival order.
    - Instrumentation scope is retained in `attributes_json`; resource metadata and events remain available in their corresponding JSON fields.
    - Current scope: numeric OTLP enum values are mapped to span kinds and status values. Input validation and alternate enum representations belong at the HTTP boundary in a later step.
+
+11. Phase 2 Trace-batch Aggregation Verification — 2026-07-29:
+   - `backend/otlp/trace_summary.py` groups normalized spans by `trace_id`, allowing a single OTLP request to contain multiple traces.
+   - The aggregation test passes with two traces; it verifies root selection, time bounds, error count, service name, and preservation of the original span records.
+   - The first parentless span by start time is the deterministic root for a complete batch. A batch containing only child spans intentionally produces no root ID, avoiding an invented trace root.
+   - Current scope: malformed persisted JSON is not handled inside the pure aggregator. Validate request shape at the HTTP boundary before this layer is invoked.
