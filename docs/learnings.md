@@ -67,6 +67,11 @@
             -> The parser flattens `resourceSpans`, `scopeSpans`, and `spans`, while retaining each span's IDs. Parent-child relationships can cross instrumentation scopes, so a scope must never be treated as a trace boundary.
             -> OTLP JSON represents nanosecond timestamps as strings to avoid JavaScript-number precision loss. Convert them to Python integers before calculating `duration_ms`.
 
+15. Trace Aggregation Is a Separate Concern from Parsing:
+            -> Parsing answers "what records arrived?"; aggregation answers "what is the trace summary?" Keeping these layers separate makes a multi-trace OTLP request testable without a database.
+            -> Use minimum start time and maximum end time to calculate trace duration. This remains correct even when sibling spans overlap or arrive in non-chronological order.
+            -> A partial delivery may contain no parentless span. Store no root ID in that case rather than guessing; a later delivery can provide the real root.
+
 11. Python Web Serving Stack (WSGI, ASGI, Uvicorn, FastAPI):
             -> WSGI (Web Server Gateway Interface): Synchronous Python standard interface (PEP 3333). Serves one HTTP request per thread/process. Cannot handle async I/O, WebSockets, or high-concurrency streaming telemetry.
             -> ASGI (Asynchronous Server Gateway Interface): Asynchronous standard interface supporting `async/await`, HTTP/2, WebSockets, and event loops. Essential for handling concurrent high-throughput telemetry ingestion without thread pool exhaustion.
