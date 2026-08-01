@@ -73,6 +73,8 @@ span:   span_id, parent_span_id, span_kind, gen_ai_model, input/output_tokens
 
 ### Phase 2 execution record
 
+**Execution convention:** Each row is delivered as a cohesive feature batch: implementation, focused tests, verification, and documentation travel together. The rows retain the underlying sub-tasks and quality criteria without becoming artificial development stop points.
+
 | Step | Status | Outcome |
 |---|---|---|
 | 2.1 — Ingestion preflight | Complete | Confirmed the schema and transactional SQLite writer are ready; `backend/app.py` has no receiver yet; the Collector currently exports only to `debug`. The direct OTLP/HTTP path remains the approved integration. |
@@ -80,8 +82,9 @@ span:   span_id, parent_span_id, span_kind, gen_ai_model, input/output_tokens
 | 2.3 — Incremental-write safety | In progress | Trace writes now use non-destructive UPSERT; a disposable two-batch verification preserved both spans and merged time bounds. Add a committed regression test before closing this gate. |
 | 2.4 — OTLP identity-safe schema | Future scope | Change the span key to `(trace_id, span_id)` before supporting arbitrary external or multi-tenant telemetry. Deferred for the local MVP because the existing 64-bit ID collision risk is negligible. |
 | 2.5 — OTLP payload contract | Complete | A pure parser flattens spans across `resourceSpans → scopeSpans`, preserves parent IDs, converts nanoseconds to milliseconds, and retains scope/resource metadata. A cross-scope test passes. |
-| 2.6 — Trace batching and persistence | Next | Group normalized spans by `trace_id`, calculate each trace summary, and verify one parsed OTLP payload persists the expected trace and span rows transactionally. |
-| 2.7 — Live Collector proof | Blocked by 2.6 | Add the `otlphttp/anveshan` Collector exporter and run an instrumented app long enough to compare emitted versus persisted span counts. |
+| 2.6 — Trace batching | Complete | Normalized spans are grouped by `trace_id`; deterministic root, time bounds, error count, status, and service name are calculated in a pure, tested aggregation layer. |
+| 2.7 — Transactional persistence | Next | Persist every summary/span batch in one SQLite transaction and verify a parsed OTLP payload creates the expected trace and span rows. |
+| 2.8 — Live Collector proof | Blocked by 2.7 | Add the `otlphttp/anveshan` Collector exporter and run an instrumented app long enough to compare emitted versus persisted span counts. |
 
 ---
 
