@@ -61,25 +61,40 @@ def init_db(conn: sqlite3.Connection):
 
 def insert_trace_and_spans(conn: sqlite3.Connection, trace_summary: Dict[str, Any], spans: List[Dict[str, Any]]):
     with conn:
+         _write_trace_and_spans(conn, trace_summary, spans)
+         
+def insert_trace_batches(
+    conn: sqlite3.Connection,
+    batches: List[tuple[Dict[str, Any], List[Dict[str, Any]]]],
+) -> None:
+    with conn:
+        for trace_summary, spans in batches:
+            _write_trace_and_spans(conn, trace_summary, spans)
+
+def _write_trace_and_spans(
+    conn: sqlite3.Connection,
+    trace_summary: Dict[str, Any],
+    spans: List[Dict[str, Any]],
+) -> None:
         conn.execute("""
-                INSERT INTO traces (
-                    trace_id, root_span_id, service_name, name, start_time, end_time,
-                    duration_ms, span_count, error_count, total_cost, total_input_tokens,
-                    total_output_tokens, status
-                ) VALUES (
-                    :trace_id, :root_span_id, :service_name, :name, :start_time, :end_time,
-                    :duration_ms, :span_count, :error_count, :total_cost, :total_input_tokens,
-                    :total_output_tokens, :status
-                )
-                  ON CONFLICT(trace_id) DO UPDATE SET
-                    root_span_id = COALESCE(excluded.root_span_id, traces.root_span_id),
-                    service_name = COALESCE(excluded.service_name, traces.service_name),
-                    name = COALESCE(excluded.name, traces.name),
-                    start_time = MIN(traces.start_time, excluded.start_time),
-                    end_time = MAX(traces.end_time, excluded.end_time),
-                    duration_ms = (MAX(traces.end_time, excluded.end_time)
-                                    - MIN(traces.start_time, excluded.start_time)) / 1000000.0
-            """, trace_summary)
+            INSERT INTO traces (
+                trace_id, root_span_id, service_name, name, start_time, end_time,
+                duration_ms, span_count, error_count, total_cost, total_input_tokens,
+                total_output_tokens, status
+            ) VALUES (
+                :trace_id, :root_span_id, :service_name, :name, :start_time, :end_time,
+                :duration_ms, :span_count, :error_count, :total_cost, :total_input_tokens,
+                :total_output_tokens, :status
+            )
+                ON CONFLICT(trace_id) DO UPDATE SET
+                root_span_id = COALESCE(excluded.root_span_id, traces.root_span_id),
+                service_name = COALESCE(excluded.service_name, traces.service_name),
+                name = COALESCE(excluded.name, traces.name),
+                start_time = MIN(traces.start_time, excluded.start_time),
+                end_time = MAX(traces.end_time, excluded.end_time),
+                duration_ms = (MAX(traces.end_time, excluded.end_time)
+                                - MIN(traces.start_time, excluded.start_time)) / 1000000.0
+        """, trace_summary)
 
         conn.executemany("""
                 INSERT OR REPLACE INTO spans (
@@ -92,3 +107,5 @@ def insert_trace_and_spans(conn: sqlite3.Connection, trace_summary: Dict[str, An
                     :cost, :attributes_json, :events_json, :resource_json
                 )
             """, spans)
+
+    
