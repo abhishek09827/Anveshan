@@ -72,6 +72,16 @@
             -> Use minimum start time and maximum end time to calculate trace duration. This remains correct even when sibling spans overlap or arrive in non-chronological order.
             -> A partial delivery may contain no parentless span. Store no root ID in that case rather than guessing; a later delivery can provide the real root.
 
+16. Transaction Boundaries for OTLP Ingestion:
+            -> The ingestion service composes parser, aggregator, and repository layers. It is the application-level boundary that turns an OTLP payload into persisted records.
+            -> One database transaction should enclose every trace batch derived from one accepted OTLP request, so a write failure cannot leave only part of that request in storage.
+            -> Keep FastAPI out of this service. That makes database behavior testable with temporary SQLite files and keeps the later HTTP handler thin.
+
+17. OTLP/HTTP Is a Wire Contract, Not Generic JSON:
+            -> OTLP/HTTP supports both binary Protobuf and Protobuf JSON encodings. A receiver must deliberately support the encoding its exporter sends; the Collector's OTLP/HTTP exporter defaults to Protobuf and needs `encoding: json` for Anveshan's current JSON parser.
+            -> OTLP JSON uses numeric enum values and hexadecimal trace/span IDs, which matches the parser's current contract.
+            -> A successful trace export uses an empty `ExportTraceServiceResponse`. For JSON, return HTTP 200 with `{}`; validate ingestion by examining persisted data, not by adding non-standard response fields.
+
 11. Python Web Serving Stack (WSGI, ASGI, Uvicorn, FastAPI):
             -> WSGI (Web Server Gateway Interface): Synchronous Python standard interface (PEP 3333). Serves one HTTP request per thread/process. Cannot handle async I/O, WebSockets, or high-concurrency streaming telemetry.
             -> ASGI (Asynchronous Server Gateway Interface): Asynchronous standard interface supporting `async/await`, HTTP/2, WebSockets, and event loops. Essential for handling concurrent high-throughput telemetry ingestion without thread pool exhaustion.
